@@ -4,6 +4,7 @@ An easy-to-deploy script of Elastiflow for Centos7 Linux
 
 # Based off the good work
 https://medium.com/@ronaldbartels/a-guide-to-installing-elastiflow-53c915250df8
+
 https://github.com/robcowart/elastiflow/blob/master/INSTALL.md
 
 
@@ -20,11 +21,18 @@ https://github.com/robcowart/elastiflow/blob/master/INSTALL.md
 
 # Installation
 login as root
+
 cd /opt
+
 wget https://raw.githubusercontent.com/fsecuritynz/centiflow/main/centiflow.sh
+
 chmod +x centiflow.sh
+
 sudo sh centiflow.sh
+
 profit
+
+
 
 # Default Configuration
 - IP = "hostname -I"
