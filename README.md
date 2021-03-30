@@ -20,7 +20,8 @@ https://github.com/robcowart/elastiflow/blob/master/INSTALL.md
 - 4 TB of storage (RAID 1+0)
 
 # Installation
-login as root
+<pre>
+sudo su -
 
 cd /opt
 
@@ -29,6 +30,7 @@ wget https://raw.githubusercontent.com/fsecuritynz/centiflow/main/centiflow.sh
 chmod +x centiflow.sh
 
 sudo sh centiflow.sh
+</pre>
 
 profit
 
