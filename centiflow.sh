@@ -14,48 +14,87 @@ if [ $? -ne 0 ]
         exit
 fi
 
+# Checking whether user has enough permission to run this script
+sudo -n true
+if [ $? -ne 0 ]
+    then
+        echo "This script requires user to have passwordless sudo access"
+        exit
+fi
+
+hw_check () {
+   totalram=$(grep MemTotal /proc/meminfo  | awk {'print $2'})
+   if [ "$totalram" -lt "7800000" ]
+        then
+		echo "Not enough RAM, please assign a minimum of 8GB"
+		exit
+	else
+		echo "Minimum RAM requirements met."
+   fi
+}
+
+
 dependency_check_rpm() {
     java -version
     if [ $? -ne 0 ]
         then
-            #Installing Java 8 if it's not installed
-            sudo yum install java-1.8.0-openjdk -y
+	#Installing Java 8 if it's not installed
+		sudo yum install java-1.8.0-openjdk -y
         # Checking if java installed is less than version 8. If yes, installing Java 8. As logstash & Elasticsearch require Java 8 or later.
         elif [ "`java -version 2> /tmp/version && awk '/version/ { gsub(/"/, "", $NF); print ( $NF < 1.8 ) ? "YES" : "NO" }' /tmp/version`" == "YES" ]
             then
-                sudo yum install jre-1.8.0-openjdk -y
+		sudo yum install java-1.8.0-openjdk -y
     fi
 }
 
 rpm_elk() {
-    #Installing wget.
-    sudo yum install wget -y
-    #Installing tcpdump
-    sudo yum install tcpdump -y
-    # Downloading rpm package of logstash
-    sudo wget --directory-prefix=/opt/ https://artifacts.elastic.co/downloads/logstash/logstash-7.8.1.rpm
-    # Install logstash rpm package
-    sudo rpm -ivh /opt/logstash*.rpm
-    # Downloading rpm package of elasticsearch
-    sudo wget --directory-prefix=/opt/ https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-7.8.1-x86_64.rpm
+    #Installing wget tcpdump net-tools and curl
+    sudo yum install wget tcpdump net-tools curl  -y
+
+    # Downloading Elasticsearch rpm package
+    elasticdl=$(curl https://www.elastic.co/downloads/elasticsearch | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*"  | grep x86_64.rpm$ | head -n 1)
+    sudo wget --directory-prefix=/opt/ $elasticdl
+
+    # Downloading Logstash rpm package
+    logstashdl=$(curl https://www.elastic.co/downloads/logstash | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*"  | grep x86_64.rpm$ | head -n 1)
+    sudo wget --directory-prefix=/opt/ $logstashdl
+
+    # Download Kibana rpm package
+    kibanadl=$(curl https://www.elastic.co/downloads/kibana | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*"  | grep x86_64.rpm$ | head -n 1)
+    sudo wget --directory-prefix=/opt/ $kibanadl
+
+    clear
+    echo "#######################################################"
+    ls -lah /opt | grep rpm | grep 'elastic\|logstash\|kibana'
+    echo ""
+
+
     # Install rpm package of elasticsearch
     sudo rpm -ivh /opt/elasticsearch*.rpm
-    # Download kibana tarball in /opt
-    sudo wget --directory-prefix=/opt/ https://artifacts.elastic.co/downloads/kibana/kibana-7.8.1-x86_64.rpm
-    # Extracting kibana tarball
+    # Install Logstash rpm package
+    sudo rpm -ivh /opt/logstash*.rpm
+    # Install kibana rpm package
     sudo rpm -ivh /opt/kibana*.rpm
+
+
+    clear
+
     # Starting The Services
+    sudo systemctl daemon-reload
     sudo systemctl enable elasticsearch
     sudo systemctl start elasticsearch
+    sudo systemctl enable logstash
+    sudo systemctl start logstash
     sudo systemctl enable kibana
     sudo systemctl start kibana
 
+
 # FIREWALLD + SELINUX CONFIGURATION
+    echo "Enabling Access on 5601/tcp - firewalld"
     sudo firewall-cmd --add-port=5601/tcp
-    sudo firewall-cmd --add-port=2055/udp
     sudo firewall-cmd --runtime-to-permanent
     systemctl restart firewalld
-    echo "Enabling sebool selinux"
+    echo "Enabling sebool selinux httpd_can_network_connect"
     setsebool -P httpd_can_network_connect  on
 
 # LISTEN ON LOCAL-IP FOR KIBANA
@@ -67,11 +106,6 @@ rpm_elk() {
    echo "indices.query.bool.max_clause_count: 8192" >> /etc/elasticsearch/elasticsearch.yml
    echo "search.max_buckets: 250000" >> /etc/elasticsearch/elasticsearch.yml
 
-# INSTALL GIT AND CLONE THE ELASTIFLOW REPO + ENABLE BETTER PROCESSING OF UDP PACKETS IN LINUX
-   yum -y install git
-   cd /opt
-   git clone https://github.com/robcowart/elastiflow.git
-   cp /opt/elastiflow/sysctl.d/87-elastiflow.conf /etc/sysctl.d
 
 # ASSIGN 4GB RAM TO JAVA
    sed -i "/-Xms1g/c\-Xms4g" /etc/logstash/jvm.options
@@ -86,29 +120,19 @@ rpm_elk() {
    /usr/share/logstash/bin/logstash-plugin update logstash-filter-geoip
    /usr/share/logstash/bin/logstash-plugin update logstash-filter-translate
 
-# ENABLE ELASTIFLOW CONFIG INSIDE LOGSTASH
-   cp -r /opt/elastiflow/logstash/elastiflow /etc/logstash/
 
-# ENABLE PIPLINES
-   echo "- pipeline.id: elastiflow" >> /etc/logstash/pipelines.yaml
-   echo "  path.config: "/etc/logstash/elastiflow/conf.d/*.conf"" >> /etc/logstash/pipelines.yml
-
-# SYSTEM'D-IFY LOGSTASH & ALLOW DNS LOOKUP OF NETFLOW TRAFFIC
+# SYSTEM'D-IFY LOGSTASH 
    mydns=$(grep nameserver /etc/resolv.conf | awk {'print $2'})
-   sed -i "s/127.0.0.1/$mydns/g" /etc/logstash/elastiflow/conf.d/20_filter_20_netflow.logstash.conf
-   sed -i "s/exporters/true/g" /etc/logstash/elastiflow/conf.d/20_filter_20_netflow.logstash.conf
    /usr/share/logstash/bin/system-install /etc/logstash/startup.options systemd
    sed -i "s/19/0/g" /etc/systemd/system/logstash.service
    sudo systemctl daemon-reload
    systemctl enable logstash 
-   cp /opt/elastiflow/logstash.service.d/elastiflow.conf /etc/systemd/system/logstash.service.d/
-   sed -i "s/127.0.0.1/$mydns/g" /etc/systemd/system/logstash.service.d/elastiflow.conf  
-   sed -i "s/IP2HOST=false/IP2HOST=true/g" /etc/systemd/system/logstash.service.d/elastiflow.conf
 
 # RESTART ALL ELK SERVICES
    systemctl restart elasticsearch
    systemctl restart logstash
    systemctl restart kibana
+
 
 # CONFIGURATION INFORMATION + FINAL SETUP
    echo ""
@@ -125,33 +149,25 @@ rpm_elk() {
    echo "You can ingest flow data on udp/2055"
    echo "#######################################################"
 
+
 }
 
 # Installing ELK Stack
-if [ "$(grep -Ei 'debian|buntu|mint' /etc/*release)" ]
+if [ "$(grep "^ID=" /etc/*release | grep -Eiv  'rocky|fedora|redhat|centos')" ]
     then
-        echo " ####################################################################"
-        echo " This is a Debian based system and is not supported"
-        echo " ####################################################################"
+        echo "####################################################################"
+        echo "RHEL/CENTOS/FEDORA/ROCKY System NOT Detected"
+        echo "####################################################################"
 
-elif [ "$(grep -Ei 'fedora|redhat|centos' /etc/*release)" ]
+elif [ "$(grep -Ei 'rocky|fedora|redhat|centos' /etc/*release)" ]
     then
-        echo " ####################################################################"
-        echo "This is a RHEL/CENTOS/FEDORA System"
-        echo "Installing ELK Stack + Elastiflow"
-        echo "This is tested to work with Juniper SRX"
+	hw_check
+        echo "####################################################################"
+        echo "RHEL/CENTOS/FEDORA/ROCKY System Detected"
+        echo "Installing ELK Stack"
         echo ""
-        echo "Relevant SRX Config:"
-       	echo "set forwarding-options sampling input rate 100"
-       	echo "set forwarding-options sampling input run-length 0"
-       	echo "set forwarding-options sampling family inet output flow-server <<this-server-ip>> port 2055"
-       	echo "set forwarding-options sampling family inet output flow-server <<this-server-ip>> source-address <<srx-srouce-ip>>"
-       	echo "set forwarding-options sampling family inet output flow-server <<this-server-ip>> version 5"
-       	echo "set forwarding-options sampling family inet output inline-jflow source-address <<srx-srouce-ip>>"
-       	echo "set interfaces irb unit 10 family inet sampling input"
-       	echo "set interfaces irb unit 10 family inet sampling output"
         echo ""
-        echo " ####################################################################"
+        echo "####################################################################"
         echo " "
         echo "installing..."
         sleep 5
@@ -160,3 +176,5 @@ elif [ "$(grep -Ei 'fedora|redhat|centos' /etc/*release)" ]
 else
     echo "This script doesn't support ELK installation on this OS."
 fi
+
+
