@@ -68,7 +68,7 @@ dependency_check_rpm() {
 
 rpm_elk() {
     #Installing wget tcpdump net-tools and curl
-    sudo yum install wget tcpdump net-tools curl  -y
+    sudo yum install wget tcpdump net-tools curl git -y
 
     # Downloading Elasticsearch rpm package
     elasticdl=$(curl https://www.elastic.co/downloads/elasticsearch | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*"  | grep x86_64.rpm$ | head -n 1)
@@ -116,6 +116,8 @@ rpm_elk() {
     systemctl restart firewalld
     echo "Enabling sebool selinux httpd_can_network_connect"
     setsebool -P httpd_can_network_connect  on
+    
+
 
 # LISTEN ON LOCAL-IP FOR KIBANA
     localip=$(hostname -I)
@@ -126,6 +128,10 @@ rpm_elk() {
    echo "indices.query.bool.max_clause_count: 8192" >> /etc/elasticsearch/elasticsearch.yml
    echo "search.max_buckets: 250000" >> /etc/elasticsearch/elasticsearch.yml
 
+# ELASTIFLOW
+    cd /opt
+    git clone https://github.com/robcowart/elastiflow.git
+    cp /opt/elastiflow/sysctl.d/87-elastiflow.conf /etc/sysctl.d
 
 # ASSIGN 4GB RAM TO JAVA
    sed -i "/-Xms1g/c\-Xms4g" /etc/logstash/jvm.options
@@ -141,12 +147,25 @@ rpm_elk() {
    /usr/share/logstash/bin/logstash-plugin update logstash-filter-translate
 
 
-# SYSTEM'D-IFY LOGSTASH 
+# ENABLE ELASTIFLOW CONFIG INSIDE LOGSTASH
+   cp -r /opt/elastiflow/logstash/elastiflow /etc/logstash/
+
+# ENABLE PIPLINES
+   echo "- pipeline.id: elastiflow" >> /etc/logstash/pipelines.yaml
+   echo "  path.config: "/etc/logstash/elastiflow/conf.d/*.conf"" >> /etc/logstash/pipelines.yml
+
+# SYSTEM'D-IFY LOGSTASH & ALLOW DNS LOOKUP OF NETFLOW TRAFFIC
    mydns=$(grep nameserver /etc/resolv.conf | awk {'print $2'})
+   sed -i "s/127.0.0.1/$mydns/g" /etc/logstash/elastiflow/conf.d/20_filter_20_netflow.logstash.conf
+   sed -i "s/exporters/true/g" /etc/logstash/elastiflow/conf.d/20_filter_20_netflow.logstash.conf
    /usr/share/logstash/bin/system-install /etc/logstash/startup.options systemd
    sed -i "s/19/0/g" /etc/systemd/system/logstash.service
    sudo systemctl daemon-reload
    systemctl enable logstash 
+   cp /opt/elastiflow/logstash.service.d/elastiflow.conf /etc/systemd/system/logstash.service.d/
+   sed -i "s/127.0.0.1/$mydns/g" /etc/systemd/system/logstash.service.d/elastiflow.conf  
+   sed -i "s/IP2HOST=false/IP2HOST=true/g" /etc/systemd/system/logstash.service.d/elastiflow.conf
+
 
 # RESTART ALL ELK SERVICES
    systemctl restart elasticsearch
