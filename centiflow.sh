@@ -69,16 +69,17 @@ dependency_check_rpm() {
 rpm_elk() {
 
     # Downloading Elasticsearch rpm package
+    cd /opt
     elasticdl=$(curl https://www.elastic.co/downloads/elasticsearch | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*"  | grep x86_64.rpm$ | head -n 1)
-    sudo wget --directory-prefix=/opt/ $elasticdl
+    curl -O $elasticdl
 
     # Downloading Logstash rpm package
     logstashdl=$(curl https://www.elastic.co/downloads/logstash | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*"  | grep x86_64.rpm$ | head -n 1)
-    sudo wget --directory-prefix=/opt/ $logstashdl
+    curl -O $logstashdl
 
     # Download Kibana rpm package
     kibanadl=$(curl https://www.elastic.co/downloads/kibana | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*"  | grep x86_64.rpm$ | head -n 1)
-    sudo wget --directory-prefix=/opt/ $kibanadl
+    curl -O $kibanadl
 
     echo ""
     echo "#######################################################"
@@ -187,8 +188,8 @@ rpm_elk() {
 
 
 clear
-#Installing wget tcpdump net-tools and curl
-sudo yum install wget tcpdump net-tools curl git -y
+#Installing tcpdump net-tools and curl
+sudo yum install tcpdump net-tools curl git -y
 sw_check
 root_check
 hw_check
