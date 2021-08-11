@@ -189,15 +189,11 @@ rpm_elk() {
 
 }
 
-setup_elk() {
-# Installing ELK Stack
-	clear
-	sw_check
-	root_check
-	hw_check
-	dependency_check_rpm
-	rpm_elk
-}
 
-setup_elk
+clear
+sw_check
+root_check
+hw_check
+dependency_check_rpm
+rpm_elk
 exit
