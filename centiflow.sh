@@ -1,26 +1,44 @@
 #!/bin/bash
 clear
 
-# USEFUL GUIDES
-# https://medium.com/@ronaldbartels/a-guide-to-installing-elastiflow-53c915250df8
-# https://github.com/robcowart/elastiflow/blob/master/INSTALL.md
-
 
 # Checking whether user has enough permission to run this script
-sudo -n true
-if [ $? -ne 0 ]
+sw_check () {
+# Check for RHEL variant environment
+if [ "$(grep "^ID=" /etc/*release | grep -Eiv  'rocky|fedora|redhat|centos')" ]
     then
-        echo "This script requires user to have passwordless sudo access"
-        exit
-fi
+        echo "####################################################################"
+        echo "RHEL/CENTOS/FEDORA/ROCKY System NOT Detected"
+        echo "####################################################################"
 
-# Checking whether user has enough permission to run this script
-sudo -n true
-if [ $? -ne 0 ]
+elif [ "$(grep -Ei 'rocky|fedora|redhat|centos' /etc/*release)" ]
     then
-        echo "This script requires user to have passwordless sudo access"
-        exit
+	hw_check
+        echo "####################################################################"
+        echo "RHEL/CENTOS/FEDORA/ROCKY System Detected"
+        echo "Installing ELK Stack"
+        echo ""
+        echo ""
+        echo "####################################################################"
+        echo " "
+        echo "installing..."
+        sleep 5
+        dependency_check_rpm
+        rpm_elk
+else
+    echo "This script doesn't support ELK installation on this OS."
 fi
+}
+
+
+root_check() {
+	sudo -n true
+	if [ $? -ne 0 ]
+		then
+			echo "This script requires user to have passwordless sudo access"
+			exit
+		fi
+}
 
 hw_check () {
    totalram=$(grep MemTotal /proc/meminfo  | awk {'print $2'})
@@ -32,6 +50,7 @@ hw_check () {
 		echo "Minimum RAM requirements met."
    fi
 }
+
 
 
 dependency_check_rpm() {
@@ -133,7 +152,6 @@ rpm_elk() {
    systemctl restart logstash
    systemctl restart kibana
 
-
 # CONFIGURATION INFORMATION + FINAL SETUP
    echo ""
    echo "#######################################################"
@@ -149,32 +167,16 @@ rpm_elk() {
    echo "You can ingest flow data on udp/2055"
    echo "#######################################################"
 
-
 }
 
+setup_elk() {
 # Installing ELK Stack
-if [ "$(grep "^ID=" /etc/*release | grep -Eiv  'rocky|fedora|redhat|centos')" ]
-    then
-        echo "####################################################################"
-        echo "RHEL/CENTOS/FEDORA/ROCKY System NOT Detected"
-        echo "####################################################################"
-
-elif [ "$(grep -Ei 'rocky|fedora|redhat|centos' /etc/*release)" ]
-    then
+	clear
+	sw_check
+	root_check
 	hw_check
-        echo "####################################################################"
-        echo "RHEL/CENTOS/FEDORA/ROCKY System Detected"
-        echo "Installing ELK Stack"
-        echo ""
-        echo ""
-        echo "####################################################################"
-        echo " "
-        echo "installing..."
-        sleep 5
-        dependency_check_rpm
-        rpm_elk
-else
-    echo "This script doesn't support ELK installation on this OS."
-fi
+	dependency_check_rpm
+	rpm_elk
+}
 
-
+setup_elk
