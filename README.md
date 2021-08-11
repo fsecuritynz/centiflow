@@ -17,7 +17,7 @@ An easy-to-deploy script of Elastiflow for RHEL varniant Linux Distributions
 <pre>
 sudo su -
 cd /opt
-wget https://raw.githubusercontent.com/fsecuritynz/centiflow/main/centiflow.sh
+curl -O https://raw.githubusercontent.com/fsecuritynz/centiflow/main/centiflow.sh
 chmod +x centiflow.sh
 ./centiflow.sh
 </pre>
