@@ -175,16 +175,13 @@ rpm_elk() {
 # CONFIGURATION INFORMATION + FINAL SETUP
    echo ""
    echo "#######################################################"
-   echo "Go to http://$localip:5601"
-   echo "Navigate to KIBANA >> INDEX PATTERNS"
-   echo "Add \"elastiflow\*\" into Index Pattern"
-   echo "Click \"Next Step\""
+   echo "Go to http://$localip:5601/app/management/kibana/objects"
    echo ""
    echo "Download the following to your desktop: https://github.com/robcowart/elastiflow/blob/master/kibana/elastiflow.kibana.7.8.x.ndjson"
-   echo "On ELK Navitage to \"Kibana >> Saved Objects \" and import the elastiflow.kibana.7.8.x.ndjson file"
-   echo "Your dashbaord is now ready"
+   echo " Import the JSON file"
+   echo "Your dashbaords are now ready"
    echo ""
-   echo "You can ingest flow data on udp/2055"
+   echo "You can ingest netflow data on udp/2055"
    echo "#######################################################"
 
 }
