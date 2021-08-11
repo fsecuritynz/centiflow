@@ -67,8 +67,6 @@ dependency_check_rpm() {
 }
 
 rpm_elk() {
-    #Installing wget tcpdump net-tools and curl
-    sudo yum install wget tcpdump net-tools curl git -y
 
     # Downloading Elasticsearch rpm package
     elasticdl=$(curl https://www.elastic.co/downloads/elasticsearch | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*"  | grep x86_64.rpm$ | head -n 1)
@@ -82,7 +80,7 @@ rpm_elk() {
     kibanadl=$(curl https://www.elastic.co/downloads/kibana | grep -Eo "(http|https)://[a-zA-Z0-9./?=_%:-]*"  | grep x86_64.rpm$ | head -n 1)
     sudo wget --directory-prefix=/opt/ $kibanadl
 
-    clear
+    echo ""
     echo "#######################################################"
     ls -lah /opt | grep rpm | grep 'elastic\|logstash\|kibana'
     echo ""
@@ -120,7 +118,7 @@ rpm_elk() {
 
 
 # LISTEN ON LOCAL-IP FOR KIBANA
-    localip=$(hostname -I)
+    localip=$(hostname -I | rev | cut -c 2-15 | rev)
     sed -i "/#server.host: \"localhost\"/c\server.host: $localip" /etc/kibana/kibana.yml 
     systemctl restart kibana
 
@@ -189,6 +187,8 @@ rpm_elk() {
 
 
 clear
+#Installing wget tcpdump net-tools and curl
+sudo yum install wget tcpdump net-tools curl git -y
 sw_check
 root_check
 hw_check
