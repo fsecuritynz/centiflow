@@ -155,6 +155,7 @@ rpm_elk() {
    echo "  path.config: "/etc/logstash/elastiflow/conf.d/*.conf"" >> /etc/logstash/pipelines.yml
 
 # SYSTEM'D-IFY LOGSTASH & ALLOW DNS LOOKUP OF NETFLOW TRAFFIC
+   cp -R /opt/elastiflow/logstash.service.d /etc/systemd/system/
    mydns=$(grep nameserver /etc/resolv.conf | awk {'print $2'})
    sed -i "s/127.0.0.1/$mydns/g" /etc/logstash/elastiflow/conf.d/20_filter_20_netflow.logstash.conf
    sed -i "s/exporters/true/g" /etc/logstash/elastiflow/conf.d/20_filter_20_netflow.logstash.conf
@@ -183,7 +184,7 @@ rpm_elk() {
    echo ""
    echo "You can ingest netflow data on udp/2055"
    echo "#######################################################"
-
+   exit
 }
 
 
