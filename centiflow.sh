@@ -3,7 +3,7 @@ clear
 
 
 # Checking whether user has enough permission to run this script
-sw_check () {
+sw_check() {
 # Check for RHEL variant environment
 if [ "$(grep "^ID=" /etc/*release | grep -Eiv  'rocky|fedora|redhat|centos')" ]
     then
@@ -40,7 +40,7 @@ root_check() {
 		fi
 }
 
-hw_check () {
+hw_check() {
    totalram=$(grep MemTotal /proc/meminfo  | awk {'print $2'})
    if [ "$totalram" -lt "7800000" ]
         then
@@ -180,3 +180,4 @@ setup_elk() {
 }
 
 setup_elk
+exit
