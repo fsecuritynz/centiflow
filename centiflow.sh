@@ -111,6 +111,7 @@ rpm_elk() {
 # FIREWALLD + SELINUX CONFIGURATION
     echo "Enabling Access on 5601/tcp - firewalld"
     sudo firewall-cmd --add-port=5601/tcp
+    sudo firewall-cmd --add-port=2055/udp
     sudo firewall-cmd --runtime-to-permanent
     systemctl restart firewalld
     echo "Enabling sebool selinux httpd_can_network_connect"
